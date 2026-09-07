@@ -116,6 +116,10 @@
             min-width: 780px;
             font-size: 0.8rem;
         }
+        tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
         th, td {
             border: 1px solid #aaa;
             padding: 8px 10px;
@@ -354,6 +358,7 @@
         <button class="action-btn" id="nowBtn">🕒 Set Date/Time to Now</button>
         <button class="action-btn" id="addRowBtn">➕ Add Row</button>
         <button class="action-btn primary" id="exportBtn">💾 Export Updated Page</button>
+        <button class="action-btn" id="resetBtn">↺ Reset</button>
         <button class="action-btn" id="printBtn">🖨️ Print</button>
         <button class="action-btn" id="pdfBtn">📄 Save PDF</button>
     </div>
@@ -574,7 +579,7 @@
                 </tbody>
             </table>
         </div>
-        <p class="hint">Tip: click any text cell to edit it. Click a Telex/FC/IM cell to toggle green ⇄ red. Click the Arrival cell to pick a date. Use "Scan Bill of Lading" to auto-fill a new row.</p>
+        <p class="hint">Tip: click any text cell to edit it. Click a Telex/FC/IM cell to toggle green ⇄ red. Click the Arrival cell to pick a date. Use "Scan Bill of Lading" to auto-fill a new row. Your edits auto-save in this browser — use Reset to discard them.</p>
 
         <div class="glossary-text">
             <strong>BILL:</strong> Bill of Lading &nbsp;&nbsp;
@@ -643,6 +648,7 @@
         }
 
         const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const STORAGE_KEY = 'algaly_abdulwahab_report_v2';
 
         function formatDate(d) {
             const day = String(d.getDate()).padStart(2, '0');
@@ -675,7 +681,74 @@
             }
         }
 
-        function attachRowHandlers(row) {
+        // ---------- Auto-save to this browser (localStorage) ----------
+
+        function collectState(tableBody) {
+            const rows = Array.from(tableBody.querySelectorAll('tr')).map(function(row) {
+                const cells = row.querySelectorAll('.editable-cell');
+                const arrivalInput = row.querySelector('.arrival-input');
+                const statusCells = row.querySelectorAll('.status-cell');
+                function isGreen(td) { return !!(td && td.classList.contains('cell-green')); }
+                return {
+                    bill: cells[0] ? cells[0].textContent : '',
+                    qty: cells[1] ? cells[1].textContent : '',
+                    cntr: cells[2] ? cells[2].textContent : '',
+                    agent: cells[3] ? cells[3].textContent : '',
+                    invoiceRef: cells[4] ? cells[4].textContent : '',
+                    arrival: arrivalInput ? arrivalInput.value : '',
+                    telex: isGreen(statusCells[0]) ? 'green' : 'red',
+                    fc: isGreen(statusCells[1]) ? 'green' : 'red',
+                    im: isGreen(statusCells[2]) ? 'green' : 'red'
+                };
+            });
+            return {
+                reportDate: document.getElementById('reportDate').textContent,
+                lastUpdate: document.getElementById('lastUpdate').textContent,
+                rows: rows
+            };
+        }
+
+        function saveState(tableBody) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(collectState(tableBody)));
+            } catch (e) {
+                console.error('Could not auto-save to this browser:', e);
+            }
+        }
+
+        // Returns true if saved data was found and restored.
+        function restoreState(tableBody, createRowElement, attachRowHandlers) {
+            let raw;
+            try {
+                raw = localStorage.getItem(STORAGE_KEY);
+            } catch (e) {
+                return false;
+            }
+            if (!raw) return false;
+            let state;
+            try {
+                state = JSON.parse(raw);
+            } catch (e) {
+                return false;
+            }
+            if (!state || !Array.isArray(state.rows)) return false;
+
+            if (typeof state.reportDate === 'string') {
+                document.getElementById('reportDate').textContent = state.reportDate;
+            }
+            if (typeof state.lastUpdate === 'string') {
+                document.getElementById('lastUpdate').textContent = state.lastUpdate;
+            }
+            tableBody.innerHTML = '';
+            state.rows.forEach(function(r) {
+                const row = createRowElement(r);
+                tableBody.appendChild(row);
+                attachRowHandlers(row);
+            });
+            return true;
+        }
+
+        function attachRowHandlers(row, tableBody) {
             row.querySelectorAll('.status-cell').forEach(function(cell) {
                 cell.addEventListener('click', function() {
                     if (cell.classList.contains('cell-green')) {
@@ -685,6 +758,7 @@
                         cell.classList.remove('cell-red');
                         cell.classList.add('cell-green');
                     }
+                    saveState(tableBody);
                 });
             });
             const arrivalInput = row.querySelector('.arrival-input');
@@ -692,6 +766,7 @@
                 syncArrivalPrintText(arrivalInput);
                 arrivalInput.addEventListener('change', function() {
                     syncArrivalPrintText(arrivalInput);
+                    saveState(tableBody);
                 });
             }
             const delBtn = row.querySelector('.del-row');
@@ -699,14 +774,14 @@
                 delBtn.addEventListener('click', function() {
                     if (confirm('Delete this row?')) {
                         row.remove();
+                        saveState(tableBody);
                     }
                 });
             }
         }
 
-        // Builds one <tr> for the table. `data` (optional) pre-fills BILL/QTY/CNTR/Agent
-        // (e.g. from a scanned document); Invoice REF and Arrival are always left for
-        // the user to fill in by hand.
+        // Builds one <tr> for the table. `data` (optional) pre-fills every field
+        // (e.g. from a scanned document, or from a previously auto-saved state).
         function createRowElement(data) {
             data = data || {};
             const row = document.createElement('tr');
@@ -730,15 +805,18 @@
             const arrivalInput = document.createElement('input');
             arrivalInput.type = 'date';
             arrivalInput.className = 'arrival-input';
+            arrivalInput.value = data.arrival || '';
             arrivalTd.appendChild(arrivalInput);
             const arrivalSpan = document.createElement('span');
             arrivalSpan.className = 'arrival-print-text';
+            arrivalSpan.textContent = formatArrival(data.arrival || '');
             arrivalTd.appendChild(arrivalSpan);
             row.appendChild(arrivalTd);
 
-            ['cell-red status-cell', 'cell-red status-cell', 'cell-red status-cell'].forEach(function(cls) {
+            ['telex', 'fc', 'im'].forEach(function(key) {
                 const td = document.createElement('td');
-                td.className = cls;
+                const colorClass = (data[key] === 'green') ? 'cell-green' : 'cell-red';
+                td.className = colorClass + ' status-cell';
                 row.appendChild(td);
             });
 
@@ -753,13 +831,29 @@
             return row;
         }
 
+        // ---------- PDF / print rendering mode ----------
+        // Temporarily hides editing-only affordances and swaps each Arrival
+        // date-picker for its plain-text equivalent, so what gets measured
+        // and captured matches the final PDF/print output exactly.
+        function applyOutputMode() {
+            document.querySelectorAll('.hint').forEach(function(el) { el.style.display = 'none'; });
+            document.querySelectorAll('.no-print').forEach(function(el) { el.style.display = 'none'; });
+            document.querySelectorAll('.arrival-input').forEach(function(el) { el.style.display = 'none'; });
+            document.querySelectorAll('.arrival-print-text').forEach(function(el) { el.style.display = 'inline'; });
+        }
+        function removeOutputMode() {
+            document.querySelectorAll('.hint').forEach(function(el) { el.style.display = ''; });
+            document.querySelectorAll('.no-print').forEach(function(el) { el.style.display = ''; });
+            document.querySelectorAll('.arrival-input').forEach(function(el) { el.style.display = ''; });
+            document.querySelectorAll('.arrival-print-text').forEach(function(el) { el.style.display = 'none'; });
+        }
+
         // ---------- Bill of Lading OCR scanning ----------
 
         function parseBillOfLading(rawText) {
             const upper = rawText.toUpperCase();
             const lines = upper.split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
 
-            // BILL number: look near the "BILL OF LADING NUMBER" label first.
             let bill = '';
             const blLabelIdx = lines.findIndex(function(l) { return l.includes('BILL OF LADING NUMBER'); });
             if (blLabelIdx !== -1) {
@@ -773,7 +867,6 @@
                 if (m) bill = m[0];
             }
 
-            // CNTR & QTY: the "N X 40HC" / "N PIECE(S)" / "SAY ..." summary block.
             let cntr = '', qty = '';
             const sayIdx = lines.findIndex(function(l) { return l.indexOf('SAY ') === 0 || l.indexOf('SAY') === 0; });
             if (sayIdx > 1) {
@@ -793,7 +886,6 @@
                 if (containerCodes.length) cntr = String(containerCodes.length);
             }
 
-            // Agent / carrier — extend this list as you scan other shipping lines.
             let agent = '';
             const CARRIER_MAP = [
                 { keyword: 'CMA CGM', code: 'CMA' },
@@ -846,22 +938,36 @@
             const nowBtn = document.getElementById('nowBtn');
             const addRowBtn = document.getElementById('addRowBtn');
             const exportBtn = document.getElementById('exportBtn');
+            const resetBtn = document.getElementById('resetBtn');
             const tableBody = document.getElementById('tableBody');
+            const reportDateEl = document.getElementById('reportDate');
+            const lastUpdateEl = document.getElementById('lastUpdate');
 
-            document.querySelectorAll('#tableBody tr').forEach(attachRowHandlers);
-
-            // Belt-and-braces: force the tip line to hide during ANY print/PDF
-            // path (browser Print-to-PDF, the Print button, or Save PDF),
-            // instead of relying solely on the @media print CSS rule.
-            const hintEl = document.querySelector('.hint');
-            if (hintEl) {
-                window.addEventListener('beforeprint', function() {
-                    hintEl.style.display = 'none';
-                });
-                window.addEventListener('afterprint', function() {
-                    hintEl.style.display = '';
+            // Restore any previously auto-saved edits from this browser;
+            // otherwise keep the data baked into the page.
+            const restored = restoreState(tableBody, createRowElement, function(row) {
+                attachRowHandlers(row, tableBody);
+            });
+            if (!restored) {
+                document.querySelectorAll('#tableBody tr').forEach(function(row) {
+                    attachRowHandlers(row, tableBody);
                 });
             }
+
+            // Auto-save whenever a text cell, the report date, or the last-update
+            // field is edited (contenteditable fires 'input' as you type).
+            tableBody.addEventListener('input', function(e) {
+                if (e.target.classList && e.target.classList.contains('editable-cell')) {
+                    saveState(tableBody);
+                }
+            });
+            if (reportDateEl) reportDateEl.addEventListener('input', function() { saveState(tableBody); });
+            if (lastUpdateEl) lastUpdateEl.addEventListener('input', function() { saveState(tableBody); });
+
+            // Keep the native browser Print / "Save as PDF" dialog consistent
+            // with the Save PDF button: hide editing-only bits during printing.
+            window.addEventListener('beforeprint', applyOutputMode);
+            window.addEventListener('afterprint', removeOutputMode);
 
             if (printBtn) {
                 printBtn.addEventListener('click', function() {
@@ -872,8 +978,9 @@
             if (nowBtn) {
                 nowBtn.addEventListener('click', function() {
                     const now = new Date();
-                    document.getElementById('reportDate').textContent = formatDate(now);
-                    document.getElementById('lastUpdate').textContent = formatTime(now);
+                    reportDateEl.textContent = formatDate(now);
+                    lastUpdateEl.textContent = formatTime(now);
+                    saveState(tableBody);
                 });
             }
 
@@ -881,8 +988,18 @@
                 addRowBtn.addEventListener('click', function() {
                     const row = createRowElement();
                     tableBody.appendChild(row);
-                    attachRowHandlers(row);
+                    attachRowHandlers(row, tableBody);
                     row.querySelector('.editable-cell').focus();
+                    saveState(tableBody);
+                });
+            }
+
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function() {
+                    if (confirm('This clears your saved edits on this device and reloads the page\u2019s original data. Continue?')) {
+                        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                        location.reload();
+                    }
                 });
             }
 
@@ -899,7 +1016,6 @@
                     clone.querySelectorAll('.status-cell').forEach(function(el) {
                         el.classList.remove('status-cell');
                     });
-                    // Bake each Arrival date-picker into plain "*DD-Mon" text.
                     const liveArrivalCells = document.querySelectorAll('.arrival-cell');
                     clone.querySelectorAll('.arrival-cell').forEach(function(cell, i) {
                         const liveInput = liveArrivalCells[i].querySelector('.arrival-input');
@@ -930,72 +1046,55 @@
             }
 
             if (pdfBtn) {
-                pdfBtn.addEventListener('click', function() {
+                pdfBtn.addEventListener('click', async function() {
                     const originalText = pdfBtn.textContent;
                     pdfBtn.textContent = '⏳ Generating PDF...';
                     pdfBtn.disabled = true;
 
-                    // Make sure the hidden "print text" for each Arrival cell
-                    // is up to date before we hand the DOM to html2canvas.
-                    document.querySelectorAll('.arrival-input').forEach(syncArrivalPrintText);
-
-                    setTimeout(function() {
-                        try {
-                            if (typeof html2pdf === 'undefined') {
-                                alert('PDF library not loaded. Use Print → "Save as PDF" instead.');
-                                window.print();
-                                pdfBtn.textContent = originalText;
-                                pdfBtn.disabled = false;
-                                return;
-                            }
-
-                            const element = document.getElementById('pdfContent');
-                            const opt = {
-                                margin: [0.4, 0.4, 0.4, 0.4],
-                                filename: 'ABDULWAHAB_Report.pdf',
-                                image: { type: 'jpeg', quality: 0.95 },
-                                html2canvas: {
-                                    scale: 2.5,
-                                    letterRendering: true,
-                                    backgroundColor: '#ffffff',
-                                    logging: false,
-                                    // html2canvas renders the live DOM and does NOT apply
-                                    // @media print rules, so strip the tip text, delete
-                                    // buttons, and date-picker inputs (replaced by their
-                                    // plain-text equivalents) on the cloned copy it uses.
-                                    onclone: function(clonedDoc) {
-                                        const hintEl = clonedDoc.querySelector('.hint');
-                                        if (hintEl) hintEl.remove();
-                                        clonedDoc.querySelectorAll('.no-print').forEach(function(el) {
-                                            el.remove();
-                                        });
-                                        clonedDoc.querySelectorAll('.arrival-input').forEach(function(el) {
-                                            el.style.display = 'none';
-                                        });
-                                        clonedDoc.querySelectorAll('.arrival-print-text').forEach(function(el) {
-                                            el.style.display = 'inline';
-                                        });
-                                    }
-                                },
-                                jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
-                            };
-
-                            html2pdf().set(opt).from(element).save().then(function() {
-                                pdfBtn.textContent = originalText;
-                                pdfBtn.disabled = false;
-                            }).catch(function(err) {
-                                console.error('PDF error:', err);
-                                alert('PDF failed. Try Print button → "Save as PDF".');
-                                pdfBtn.textContent = originalText;
-                                pdfBtn.disabled = false;
-                            });
-                        } catch(err) {
-                            console.error('PDF exception:', err);
-                            alert('Error generating PDF. Use Print button.');
-                            pdfBtn.textContent = originalText;
-                            pdfBtn.disabled = false;
+                    try {
+                        if (typeof html2pdf === 'undefined') {
+                            alert('PDF library not loaded. Use Print → "Save as PDF" instead.');
+                            window.print();
+                            return;
                         }
-                    }, 50);
+
+                        document.querySelectorAll('.arrival-input').forEach(syncArrivalPrintText);
+                        applyOutputMode();
+                        // Let the browser reflow after the visibility changes above
+                        // so the measurements below reflect the final layout.
+                        await new Promise(function(resolve) { setTimeout(resolve, 30); });
+
+                        const element = document.getElementById('pdfContent');
+                        const pxPerInch = 96;
+                        const marginIn = 0.4;
+                        const widthIn = (element.scrollWidth / pxPerInch) + (marginIn * 2);
+                        const heightIn = (element.scrollHeight / pxPerInch) + (marginIn * 2);
+
+                        const opt = {
+                            margin: [marginIn, marginIn, marginIn, marginIn],
+                            filename: 'ABDULWAHAB_Report.pdf',
+                            image: { type: 'jpeg', quality: 0.95 },
+                            html2canvas: {
+                                scale: 2.5,
+                                letterRendering: true,
+                                backgroundColor: '#ffffff',
+                                logging: false
+                            },
+                            jsPDF: { unit: 'in', format: [widthIn, heightIn] },
+                            // Extra safety net: if the page ever does need to split,
+                            // never cut a row in half — push the whole row over instead.
+                            pagebreak: { mode: ['css', 'legacy'], avoid: 'tr' }
+                        };
+
+                        await html2pdf().set(opt).from(element).save();
+                    } catch (err) {
+                        console.error('PDF error:', err);
+                        alert('PDF failed. Try Print button → "Save as PDF".');
+                    } finally {
+                        removeOutputMode();
+                        pdfBtn.textContent = originalText;
+                        pdfBtn.disabled = false;
+                    }
                 });
             }
 
@@ -1074,9 +1173,10 @@
                     };
                     const row = createRowElement(data);
                     tableBody.appendChild(row);
-                    attachRowHandlers(row);
+                    attachRowHandlers(row, tableBody);
                     closeOverlay();
                     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    saveState(tableBody);
                 });
             }
         });
