@@ -39,6 +39,17 @@
         .action-btn:active {
             background-color: #e0e0e0;
         }
+        .action-btn.primary {
+            background-color: #d7ecff;
+            border-color: #7fb8e6;
+        }
+        .action-btn.danger-mini {
+            background-color: #ffe0e0;
+            border-color: #e08a8a;
+            padding: 4px 8px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+        }
         h1 {
             margin-bottom: 5px;
             font-size: 1.8rem;
@@ -68,6 +79,8 @@
             font-size: 1.1rem;
             text-decoration: underline;
             margin: 5px 0;
+            display: flex;
+            align-items: center;
             flex-wrap: wrap;
         }
         .update-line {
@@ -77,6 +90,14 @@
             font-weight: normal;
             margin-left: 10px;
             white-space: nowrap;
+        }
+        .editable {
+            outline: none;
+            border-bottom: 1px dashed transparent;
+        }
+        .editable:hover, .editable:focus {
+            border-bottom: 1px dashed #999;
+            background-color: #fffbe6;
         }
         .boarg-line {
             font-weight: bold;
@@ -92,7 +113,7 @@
         table {
             border-collapse: collapse;
             width: 100%;
-            min-width: 700px;
+            min-width: 780px;
             font-size: 0.8rem;
         }
         th, td {
@@ -105,6 +126,9 @@
             font-weight: bold;
             background-color: #f2f2f2;
         }
+        td.editable-cell {
+            cursor: text;
+        }
         /* Narrow widths for the last 3 columns (Telex, FC, IM) */
         th:nth-child(7), td:nth-child(7),
         th:nth-child(8), td:nth-child(8),
@@ -114,11 +138,36 @@
             text-align: center;
             padding: 8px 4px;
         }
+        th:nth-child(10), td:nth-child(10) {
+            width: 34px;
+            max-width: 34px;
+            text-align: center;
+            padding: 4px;
+        }
         .cell-green {
             background-color: #90EE90;
         }
         .cell-red {
             background-color: #FFCCCC;
+        }
+        .status-cell {
+            cursor: pointer;
+        }
+        .arrival-input {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 0.8rem;
+            border: none;
+            background: transparent;
+            width: 100%;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .arrival-input:hover, .arrival-input:focus {
+            outline: none;
+            background-color: #fffbe6;
+        }
+        .arrival-print-text {
+            display: none;
         }
         .footer {
             margin-top: 30px;
@@ -142,10 +191,103 @@
             font-size: 0.85rem;
             line-height: 1.5;
         }
+        .hint {
+            font-size: 0.75rem;
+            color: #777;
+            font-style: italic;
+            margin: 8px 0 0 0;
+        }
+
+        /* Scan overlay */
+        .scan-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .scan-overlay.active {
+            display: flex;
+        }
+        .scan-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 22px;
+            max-width: 480px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            font-family: 'Times New Roman', Times, serif;
+        }
+        .scan-card h3 {
+            margin-top: 0;
+        }
+        .scan-field {
+            margin-bottom: 12px;
+        }
+        .scan-field label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        .scan-field input {
+            width: 100%;
+            padding: 7px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            border: 1px solid #aaa;
+            border-radius: 4px;
+        }
+        .scan-progress {
+            font-size: 0.9rem;
+            color: #555;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .scan-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            justify-content: flex-end;
+        }
+        .scan-raw {
+            margin-top: 14px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .scan-raw textarea {
+            width: 100%;
+            height: 90px;
+            font-size: 0.7rem;
+            font-family: monospace;
+            margin-top: 6px;
+        }
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid #ddd;
+            border-top-color: #555;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 6px 0 14px 0;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
         @media print {
-            .button-bar {
-                display: none;
+            .button-bar, .no-print, .hint, .scan-overlay {
+                display: none !important;
+            }
+            .arrival-input {
+                display: none !important;
+            }
+            .arrival-print-text {
+                display: inline !important;
             }
             body {
                 margin: 0.3in;
@@ -162,6 +304,10 @@
             }
             th, td {
                 padding: 4px 6px;
+            }
+            .editable {
+                border-bottom: none !important;
+                background-color: transparent !important;
             }
             .cell-green, .cell-red,
             .swatch-green, .swatch-red,
@@ -197,10 +343,17 @@
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div class="container">
     <div class="button-bar">
+        <button class="action-btn" id="scanBtn">📷 Scan Bill of Lading</button>
+        <input type="file" id="blFileInput" accept="image/*,application/pdf" style="display:none">
+        <button class="action-btn" id="nowBtn">🕒 Set Date/Time to Now</button>
+        <button class="action-btn" id="addRowBtn">➕ Add Row</button>
+        <button class="action-btn primary" id="exportBtn">💾 Export Updated Page</button>
         <button class="action-btn" id="printBtn">🖨️ Print</button>
         <button class="action-btn" id="pdfBtn">📄 Save PDF</button>
     </div>
@@ -213,226 +366,216 @@
         <div class="contact-line"><a href="mailto:algalyalhaj24@gmail.com" class="email-link">algalyalhaj24@gmail.com</a></div>
         <hr class="dotted-line">
         <div class="report-line">
-            Report Date: 27-Jul-2026
-            <span class="update-line">last update: 01:21 p.m.</span>
+            Report Date:&nbsp;<span class="editable" id="reportDate" contenteditable="true">07-Sep-2026</span>
+            <span class="update-line">last update: <span class="editable" id="lastUpdate" contenteditable="true">05:09 p.m.</span></span>
         </div>
-        <div class="boarg-line"><u>ABDULWAHAB HASSAN TRADING ENTERPRISES</u></div>
+        <div class="boarg-line"><u>ABDUL WAHAB HASSAN TRADING ENTERPRISES</u></div>
 
         <div class="table-wrapper">
             <table id="dataTable">
                 <thead>
                     <tr>
-                        <th>BILL</th><th>QTY</th><th>CNTR</th><th>Agent</th><th>Invoice REF</th><th>Arrival</th><th>Telex</th><th>FC</th><th>IM</th>
+                        <th>BILL</th><th>QTY</th><th>CNTR</th><th>Agent</th><th>Invoice REF</th><th>Arrival</th><th>Telex</th><th>FC</th><th>IM</th><th class="no-print"></th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <!-- YOUR 18 ROWS GO HERE -->
-                    <!-- Example row shown — replace with your actual data --> 
-  
-<tr>
-                        <td>MAA600133300</td>
-                        <td>190</td>
-                        <td>1</td>
-                        <td>PIL</td>
-                        <td>3009003</td>
-                        <td>*Unknown</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-green"></td>
-                        <td class="cell-green"></td>
-                    </tr>  
-<tr>
-                        <td>MEDUJ7583498</td>
-                        <td>314</td>
-                        <td>2</td>
-                        <td>MSC</td>
-                        <td>2204000318</td>
-                        <td>*Unknown</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-green"></td>
-                        <td class="cell-red"></td>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">SLGSHS017856</td>
+                        <td class="editable-cell" contenteditable="true">2333</td>
+                        <td class="editable-cell" contenteditable="true">2</td>
+                        <td class="editable-cell" contenteditable="true">SOMARAIN</td>
+                        <td class="editable-cell" contenteditable="true">3009158</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-08-25"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-green status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
                     </tr>
-
-<tr>
-                        <td>NGP3812387C</td>
-                        <td>909</td>
-                        <td>2</td>
-                        <td>CMA</td>
-                        <td>3009051</td>
-                        <td>*28-JUL</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">CULVNGB2624810</td>
+                        <td class="editable-cell" contenteditable="true">2583</td>
+                        <td class="editable-cell" contenteditable="true">2</td>
+                        <td class="editable-cell" contenteditable="true">SHARAF</td>
+                        <td class="editable-cell" contenteditable="true">3009147</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-08-26"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-green status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
                     </tr>
-
-<tr>
-                        <td>NGP3812387B</td>
-                        <td>2027</td>
-                        <td>2</td>
-                        <td>CMA</td>
-                        <td>3009051</td>
-                        <td>*28-JUL</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                    </tr>                           
-<tr>
-                        <td>MAA600116000</td>
-                        <td>988</td>
-                        <td>1</td>
-                        <td>PIL</td>
-                        <td>3008990</td>
-                        <td>*03-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-green"></td>
-                        <td class="cell-green"></td>
-                    </tr> 
-  <tr>
-                        <td>270630839</td>
-                        <td>1200</td>
-                        <td>1</td>
-                        <td>MAERSK</td>
-                        <td>3008950</td>
-                        <td>*15-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-green"></td>
-                        <td class="cell-green"></td>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">MAA600191204</td>
+                        <td class="editable-cell" contenteditable="true">220</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true">3009197</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-09"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-green status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
                     </tr>
- 
-<tr>
-                        <td>270630812</td>
-                        <td>195</td>
-                        <td>1</td>
-                        <td>MAERSK</td>
-                        <td>3008964</td>
-                        <td>*15-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-green"></td>
-                        <td class="cell-green"></td>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">MAA600191203</td>
+                        <td class="editable-cell" contenteditable="true">220</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true">3009195</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-09"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-green status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
                     </tr>
-
-<tr>
-                        <td>270630392</td>
-                        <td>918</td>
-                        <td>1</td>
-                        <td>MAERSK</td>
-                        <td>3008954</td>
-                        <td>*15-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-green"></td>
-                        <td class="cell-green"></td>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">TAXW60122100</td>
+                        <td class="editable-cell" contenteditable="true">454</td>
+                        <td class="editable-cell" contenteditable="true">2</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true">3009212</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-09"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
                     </tr>
-<tr>
-                        <td>270631941</td>
-                        <td>1558</td>
-                        <td>1</td>
-                        <td>MAERSK</td>
-                        <td>3008955</td>
-                        <td>*15-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-green"></td>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">MAA600191209</td>
+                        <td class="editable-cell" contenteditable="true">1000</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true">3009198</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-09"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
                     </tr>
-<tr>
-                        <td>270632178</td>
-                        <td>1562</td>
-                        <td>1</td>
-                        <td>MAERSK</td>
-                        <td>3008956</td>
-                        <td>*15-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-green"></td>
-                        <td class="cell-green"></td>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">CULVSSA2600005</td>
+                        <td class="editable-cell" contenteditable="true">573</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">SHARAF</td>
+                        <td class="editable-cell" contenteditable="true">3009349</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-15"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
                     </tr>
-  <tr>
-                        <td>270839430</td>
-                        <td>2720</td>
-                        <td>2</td>
-                        <td>MAERSK</td>
-                        <td>3009137</td>
-                        <td>*30-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                    </tr> 
-                   
-<tr>
-                        <td>SLGSHS017856</td>
-                        <td>2333</td>
-                        <td>2</td>
-                        <td>SOMARIN</td>
-                        <td>3009158</td>
-                        <td>*17-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                    </tr> 
-
- <tr>
-                        <td>SLGSHS017855</td>
-                        <td>144</td>
-                        <td>1</td>
-                        <td>SOMARIN</td>
-                        <td>3009157</td>
-                        <td>*15-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                    </tr>   
-              
-
-<tr>
-                        <td>MAA600180300</td>
-                        <td>793</td>
-                        <td>1</td>
-                        <td>PIL</td>
-                        <td>3009072</td>
-                        <td>*26-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                    </tr>  
-
-<tr>
-                        <td>MAA600172600</td>
-                        <td>1090</td>
-                        <td>1</td>
-                        <td>PIL</td>
-                        <td>3009147</td>
-                        <td>*26-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                    </tr> 
-
-<tr>
-                        <td>CULVNGB2624810</td>
-                        <td>2583</td>
-                        <td>2</td>
-                        <td>SHARAF</td>
-                        <td>3009147</td>
-                        <td>*18-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                    </tr> 
- <tr>
-                        <td>TAXW60116000</td>
-                        <td>320</td>
-                        <td>1</td>
-                        <td>PIL</td>
-                        <td>3009178</td>
-                        <td>*26-Aug</td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
-                        <td class="cell-red"></td>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">CULVSSA2600003</td>
+                        <td class="editable-cell" contenteditable="true">600</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">SHARAF</td>
+                        <td class="editable-cell" contenteditable="true">3009350</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-15"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
                     </tr>
-                       
-                    <!-- Add your remaining 17 rows here -->
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">MAA600214701</td>
+                        <td class="editable-cell" contenteditable="true">233</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true">3009225</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-21"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
+                    </tr>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">MAA600214702</td>
+                        <td class="editable-cell" contenteditable="true">800</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true">3009226</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-21"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
+                    </tr>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">TAXW60153300</td>
+                        <td class="editable-cell" contenteditable="true">1500</td>
+                        <td class="editable-cell" contenteditable="true">2</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true"></td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-21"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
+                    </tr>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">270839430</td>
+                        <td class="editable-cell" contenteditable="true">2720</td>
+                        <td class="editable-cell" contenteditable="true">2</td>
+                        <td class="editable-cell" contenteditable="true">MAERSK</td>
+                        <td class="editable-cell" contenteditable="true">3009137</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-09-28"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
+                    </tr>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">TAXW60153200</td>
+                        <td class="editable-cell" contenteditable="true">395</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true"></td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-10-03"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
+                    </tr>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">MAA600227500</td>
+                        <td class="editable-cell" contenteditable="true">239</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">PIL</td>
+                        <td class="editable-cell" contenteditable="true">3009316</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-11-02"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
+                    </tr>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">274385741</td>
+                        <td class="editable-cell" contenteditable="true">1211</td>
+                        <td class="editable-cell" contenteditable="true">2</td>
+                        <td class="editable-cell" contenteditable="true">MAERSK</td>
+                        <td class="editable-cell" contenteditable="true">3009285</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-11-11"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
+                    </tr>
+                    <tr>
+                        <td class="editable-cell" contenteditable="true">274792899</td>
+                        <td class="editable-cell" contenteditable="true">395</td>
+                        <td class="editable-cell" contenteditable="true">1</td>
+                        <td class="editable-cell" contenteditable="true">MAERSK</td>
+                        <td class="editable-cell" contenteditable="true">3009284</td>
+                        <td class="arrival-cell"><input type="date" class="arrival-input" value="2026-11-11"><span class="arrival-print-text"></span></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="cell-red status-cell"></td>
+                        <td class="no-print"><button class="action-btn danger-mini del-row">✕</button></td>
+                    </tr>
                 </tbody>
             </table>
         </div>
+        <p class="hint">Tip: click any text cell to edit it. Click a Telex/FC/IM cell to toggle green ⇄ red. Click the Arrival cell to pick a date. Use "Scan Bill of Lading" to auto-fill a new row.</p>
 
-        <!-- UPDATED GLOSSARY with your new terms -->
         <div class="glossary-text">
             <strong>BILL:</strong> Bill of Lading &nbsp;&nbsp;
             <strong>QTY:</strong> Quantity &nbsp;&nbsp;
@@ -456,6 +599,39 @@
     </div>
 </div>
 
+<div class="scan-overlay no-print" id="scanOverlay">
+    <div class="scan-card">
+        <div id="scanLoading">
+            <h3>Reading document…</h3>
+            <div class="spinner"></div>
+            <p class="scan-progress" id="scanProgressText">Starting…</p>
+        </div>
+        <div id="scanReview" style="display:none;">
+            <h3>Review extracted info</h3>
+            <div class="scan-field"><label>BILL</label><input id="scanBill" type="text"></div>
+            <div class="scan-field"><label>QTY</label><input id="scanQty" type="text"></div>
+            <div class="scan-field"><label>CNTR</label><input id="scanCntr" type="text"></div>
+            <div class="scan-field"><label>Agent</label><input id="scanAgent" type="text"></div>
+            <p class="scan-progress">Invoice REF and Arrival aren't on this document — add those yourself after.</p>
+            <details class="scan-raw">
+                <summary>Show raw scanned text (to double-check anything)</summary>
+                <textarea id="scanRawText" readonly></textarea>
+            </details>
+            <div class="scan-actions">
+                <button class="action-btn" id="scanCancelBtn">Cancel</button>
+                <button class="action-btn primary" id="scanAddBtn">➕ Add to Table</button>
+            </div>
+        </div>
+        <div id="scanErrorBox" style="display:none;">
+            <h3>Couldn't read that</h3>
+            <p class="scan-progress" id="scanErrorMsg"></p>
+            <div class="scan-actions">
+                <button class="action-btn" id="scanErrorCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     (function() {
         function ready(fn) {
@@ -466,13 +642,290 @@
             }
         }
 
+        const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        function formatDate(d) {
+            const day = String(d.getDate()).padStart(2, '0');
+            return day + '-' + MONTHS[d.getMonth()] + '-' + d.getFullYear();
+        }
+
+        function formatTime(d) {
+            let h = d.getHours();
+            const m = String(d.getMinutes()).padStart(2, '0');
+            const ampm = h >= 12 ? 'p.m.' : 'a.m.';
+            h = h % 12;
+            if (h === 0) h = 12;
+            return String(h).padStart(2, '0') + ':' + m + ' ' + ampm;
+        }
+
+        // Converts an ISO date (yyyy-mm-dd) into the short "*DD-Mon" style
+        // used throughout this report (asterisk = estimated arrival).
+        function formatArrival(isoValue) {
+            if (!isoValue) return '';
+            const parts = isoValue.split('-');
+            const y = parseInt(parts[0], 10), mo = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
+            const dt = new Date(y, mo, d);
+            return '*' + String(dt.getDate()).padStart(2, '0') + '-' + MONTHS[dt.getMonth()];
+        }
+
+        function syncArrivalPrintText(input) {
+            const span = input.nextElementSibling;
+            if (span && span.classList.contains('arrival-print-text')) {
+                span.textContent = formatArrival(input.value);
+            }
+        }
+
+        function attachRowHandlers(row) {
+            row.querySelectorAll('.status-cell').forEach(function(cell) {
+                cell.addEventListener('click', function() {
+                    if (cell.classList.contains('cell-green')) {
+                        cell.classList.remove('cell-green');
+                        cell.classList.add('cell-red');
+                    } else {
+                        cell.classList.remove('cell-red');
+                        cell.classList.add('cell-green');
+                    }
+                });
+            });
+            const arrivalInput = row.querySelector('.arrival-input');
+            if (arrivalInput) {
+                syncArrivalPrintText(arrivalInput);
+                arrivalInput.addEventListener('change', function() {
+                    syncArrivalPrintText(arrivalInput);
+                });
+            }
+            const delBtn = row.querySelector('.del-row');
+            if (delBtn) {
+                delBtn.addEventListener('click', function() {
+                    if (confirm('Delete this row?')) {
+                        row.remove();
+                    }
+                });
+            }
+        }
+
+        // Builds one <tr> for the table. `data` (optional) pre-fills BILL/QTY/CNTR/Agent
+        // (e.g. from a scanned document); Invoice REF and Arrival are always left for
+        // the user to fill in by hand.
+        function createRowElement(data) {
+            data = data || {};
+            const row = document.createElement('tr');
+
+            function makeEditableCell(text) {
+                const td = document.createElement('td');
+                td.className = 'editable-cell';
+                td.contentEditable = 'true';
+                td.textContent = text || '';
+                return td;
+            }
+
+            row.appendChild(makeEditableCell(data.bill || 'New Bill'));
+            row.appendChild(makeEditableCell(data.qty || '0'));
+            row.appendChild(makeEditableCell(data.cntr || '1'));
+            row.appendChild(makeEditableCell(data.agent || ''));
+            row.appendChild(makeEditableCell(data.invoiceRef || ''));
+
+            const arrivalTd = document.createElement('td');
+            arrivalTd.className = 'arrival-cell';
+            const arrivalInput = document.createElement('input');
+            arrivalInput.type = 'date';
+            arrivalInput.className = 'arrival-input';
+            arrivalTd.appendChild(arrivalInput);
+            const arrivalSpan = document.createElement('span');
+            arrivalSpan.className = 'arrival-print-text';
+            arrivalTd.appendChild(arrivalSpan);
+            row.appendChild(arrivalTd);
+
+            ['cell-red status-cell', 'cell-red status-cell', 'cell-red status-cell'].forEach(function(cls) {
+                const td = document.createElement('td');
+                td.className = cls;
+                row.appendChild(td);
+            });
+
+            const delTd = document.createElement('td');
+            delTd.className = 'no-print';
+            const delBtn = document.createElement('button');
+            delBtn.className = 'action-btn danger-mini del-row';
+            delBtn.textContent = '✕';
+            delTd.appendChild(delBtn);
+            row.appendChild(delTd);
+
+            return row;
+        }
+
+        // ---------- Bill of Lading OCR scanning ----------
+
+        function parseBillOfLading(rawText) {
+            const upper = rawText.toUpperCase();
+            const lines = upper.split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+
+            // BILL number: look near the "BILL OF LADING NUMBER" label first.
+            let bill = '';
+            const blLabelIdx = lines.findIndex(function(l) { return l.includes('BILL OF LADING NUMBER'); });
+            if (blLabelIdx !== -1) {
+                for (let i = blLabelIdx; i < Math.min(blLabelIdx + 4, lines.length); i++) {
+                    const m = lines[i].match(/\b[A-Z]{2,6}\d{6,9}[A-Z]?\b/);
+                    if (m) { bill = m[0]; break; }
+                }
+            }
+            if (!bill) {
+                const m = upper.match(/\b[A-Z]{2,6}\d{6,9}[A-Z]?\b/);
+                if (m) bill = m[0];
+            }
+
+            // CNTR & QTY: the "N X 40HC" / "N PIECE(S)" / "SAY ..." summary block.
+            let cntr = '', qty = '';
+            const sayIdx = lines.findIndex(function(l) { return l.indexOf('SAY ') === 0 || l.indexOf('SAY') === 0; });
+            if (sayIdx > 1) {
+                const qtyMatch = lines[sayIdx - 1].match(/(\d[\d,]*)\s*PIECE/);
+                if (qtyMatch) qty = qtyMatch[1].replace(/,/g, '');
+                const cntrMatch = lines[sayIdx - 2].match(/^(\d+)\s*X\s*\d{2}\s*(?:HC|HQ|GP|FT|RF)?/);
+                if (cntrMatch) cntr = cntrMatch[1];
+            }
+            if (!qty) {
+                const pieceNums = Array.from(upper.matchAll(/(\d[\d,]*)\s*PIECE/g)).map(function(m) {
+                    return parseInt(m[1].replace(/,/g, ''), 10);
+                });
+                if (pieceNums.length) qty = String(Math.max.apply(null, pieceNums));
+            }
+            if (!cntr) {
+                const containerCodes = upper.match(/\b[A-Z]{4}\d{6,7}\b/g) || [];
+                if (containerCodes.length) cntr = String(containerCodes.length);
+            }
+
+            // Agent / carrier — extend this list as you scan other shipping lines.
+            let agent = '';
+            const CARRIER_MAP = [
+                { keyword: 'CMA CGM', code: 'CMA' },
+                { keyword: 'PACIFIC INTERNATIONAL LINES', code: 'PIL' },
+                { keyword: ' PIL ', code: 'PIL' },
+                { keyword: 'MEDITERRANEAN SHIPPING', code: 'MSC' },
+                { keyword: ' MSC ', code: 'MSC' },
+                { keyword: 'MAERSK', code: 'MAERSK' },
+                { keyword: 'SHARAF', code: 'SHARAF' }
+            ];
+            for (let i = 0; i < CARRIER_MAP.length; i++) {
+                if (upper.indexOf(CARRIER_MAP[i].keyword) !== -1) { agent = CARRIER_MAP[i].code; break; }
+            }
+
+            return { bill: bill, qty: qty, cntr: cntr, agent: agent };
+        }
+
+        async function renderPdfFirstPageToCanvas(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({ scale: 2.5 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            return canvas;
+        }
+
+        async function extractText(file, onProgress) {
+            let source = file;
+            if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+                onProgress('Rendering PDF page…');
+                source = await renderPdfFirstPageToCanvas(file);
+            }
+            const result = await Tesseract.recognize(source, 'eng', {
+                logger: function(m) {
+                    if (m.status && typeof m.progress === 'number') {
+                        onProgress('Reading document… ' + m.status + ' (' + Math.round(m.progress * 100) + '%)');
+                    }
+                }
+            });
+            return result.data.text;
+        }
+
         ready(function() {
             const printBtn = document.getElementById('printBtn');
             const pdfBtn = document.getElementById('pdfBtn');
+            const nowBtn = document.getElementById('nowBtn');
+            const addRowBtn = document.getElementById('addRowBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const tableBody = document.getElementById('tableBody');
+
+            document.querySelectorAll('#tableBody tr').forEach(attachRowHandlers);
+
+            // Belt-and-braces: force the tip line to hide during ANY print/PDF
+            // path (browser Print-to-PDF, the Print button, or Save PDF),
+            // instead of relying solely on the @media print CSS rule.
+            const hintEl = document.querySelector('.hint');
+            if (hintEl) {
+                window.addEventListener('beforeprint', function() {
+                    hintEl.style.display = 'none';
+                });
+                window.addEventListener('afterprint', function() {
+                    hintEl.style.display = '';
+                });
+            }
 
             if (printBtn) {
                 printBtn.addEventListener('click', function() {
                     window.print();
+                });
+            }
+
+            if (nowBtn) {
+                nowBtn.addEventListener('click', function() {
+                    const now = new Date();
+                    document.getElementById('reportDate').textContent = formatDate(now);
+                    document.getElementById('lastUpdate').textContent = formatTime(now);
+                });
+            }
+
+            if (addRowBtn) {
+                addRowBtn.addEventListener('click', function() {
+                    const row = createRowElement();
+                    tableBody.appendChild(row);
+                    attachRowHandlers(row);
+                    row.querySelector('.editable-cell').focus();
+                });
+            }
+
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function() {
+                    // Clone the whole document, strip the editing affordances,
+                    // and bake current values into plain attributes so the
+                    // exported file is a clean static page (same as manual edits).
+                    const clone = document.documentElement.cloneNode(true);
+
+                    clone.querySelectorAll('[contenteditable]').forEach(function(el) {
+                        el.removeAttribute('contenteditable');
+                    });
+                    clone.querySelectorAll('.status-cell').forEach(function(el) {
+                        el.classList.remove('status-cell');
+                    });
+                    // Bake each Arrival date-picker into plain "*DD-Mon" text.
+                    const liveArrivalCells = document.querySelectorAll('.arrival-cell');
+                    clone.querySelectorAll('.arrival-cell').forEach(function(cell, i) {
+                        const liveInput = liveArrivalCells[i].querySelector('.arrival-input');
+                        cell.textContent = formatArrival(liveInput ? liveInput.value : '');
+                        cell.classList.remove('arrival-cell');
+                    });
+                    clone.querySelectorAll('.no-print').forEach(function(el) {
+                        el.remove();
+                    });
+                    const hint = clone.querySelector('.hint');
+                    if (hint) hint.remove();
+                    const scanOverlayClone = clone.querySelector('.scan-overlay');
+                    if (scanOverlayClone) scanOverlayClone.remove();
+
+                    const doctype = '<!DOCTYPE html>\n';
+                    const html = doctype + clone.outerHTML;
+
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'ABDULWAHAB_Report.html';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
                 });
             }
 
@@ -481,6 +934,10 @@
                     const originalText = pdfBtn.textContent;
                     pdfBtn.textContent = '⏳ Generating PDF...';
                     pdfBtn.disabled = true;
+
+                    // Make sure the hidden "print text" for each Arrival cell
+                    // is up to date before we hand the DOM to html2canvas.
+                    document.querySelectorAll('.arrival-input').forEach(syncArrivalPrintText);
 
                     setTimeout(function() {
                         try {
@@ -497,11 +954,28 @@
                                 margin: [0.4, 0.4, 0.4, 0.4],
                                 filename: 'ABDULWAHAB_Report.pdf',
                                 image: { type: 'jpeg', quality: 0.95 },
-                                html2canvas: { 
-                                    scale: 2.5, 
-                                    letterRendering: true, 
+                                html2canvas: {
+                                    scale: 2.5,
+                                    letterRendering: true,
                                     backgroundColor: '#ffffff',
-                                    logging: false
+                                    logging: false,
+                                    // html2canvas renders the live DOM and does NOT apply
+                                    // @media print rules, so strip the tip text, delete
+                                    // buttons, and date-picker inputs (replaced by their
+                                    // plain-text equivalents) on the cloned copy it uses.
+                                    onclone: function(clonedDoc) {
+                                        const hintEl = clonedDoc.querySelector('.hint');
+                                        if (hintEl) hintEl.remove();
+                                        clonedDoc.querySelectorAll('.no-print').forEach(function(el) {
+                                            el.remove();
+                                        });
+                                        clonedDoc.querySelectorAll('.arrival-input').forEach(function(el) {
+                                            el.style.display = 'none';
+                                        });
+                                        clonedDoc.querySelectorAll('.arrival-print-text').forEach(function(el) {
+                                            el.style.display = 'inline';
+                                        });
+                                    }
                                 },
                                 jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
                             };
@@ -524,8 +998,89 @@
                     }, 50);
                 });
             }
+
+            // ---------- Scan Bill of Lading wiring ----------
+            const scanBtn = document.getElementById('scanBtn');
+            const blFileInput = document.getElementById('blFileInput');
+            const scanOverlay = document.getElementById('scanOverlay');
+            const scanLoading = document.getElementById('scanLoading');
+            const scanReview = document.getElementById('scanReview');
+            const scanErrorBox = document.getElementById('scanErrorBox');
+            const scanProgressText = document.getElementById('scanProgressText');
+            const scanCancelBtn = document.getElementById('scanCancelBtn');
+            const scanAddBtn = document.getElementById('scanAddBtn');
+            const scanErrorCloseBtn = document.getElementById('scanErrorCloseBtn');
+
+            function openOverlayLoading() {
+                scanOverlay.classList.add('active');
+                scanLoading.style.display = 'block';
+                scanReview.style.display = 'none';
+                scanErrorBox.style.display = 'none';
+                scanProgressText.textContent = 'Starting…';
+            }
+            function closeOverlay() {
+                scanOverlay.classList.remove('active');
+            }
+            function showReviewForm(parsed, rawText) {
+                scanLoading.style.display = 'none';
+                scanReview.style.display = 'block';
+                document.getElementById('scanBill').value = parsed.bill;
+                document.getElementById('scanQty').value = parsed.qty;
+                document.getElementById('scanCntr').value = parsed.cntr;
+                document.getElementById('scanAgent').value = parsed.agent;
+                document.getElementById('scanRawText').value = rawText;
+            }
+            function showScanError(msg) {
+                scanLoading.style.display = 'none';
+                scanErrorBox.style.display = 'block';
+                document.getElementById('scanErrorMsg').textContent = msg;
+            }
+
+            if (scanBtn && blFileInput) {
+                scanBtn.addEventListener('click', function() {
+                    blFileInput.click();
+                });
+                blFileInput.addEventListener('change', async function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    openOverlayLoading();
+                    try {
+                        const text = await extractText(file, function(msg) {
+                            scanProgressText.textContent = msg;
+                        });
+                        const parsed = parseBillOfLading(text);
+                        showReviewForm(parsed, text);
+                    } catch (err) {
+                        console.error('OCR error:', err);
+                        const reason = (err && err.message) ? err.message : String(err);
+                        const isLocalFile = window.location.protocol === 'file:';
+                        const hint = isLocalFile
+                            ? 'This page is open as a local file — Scan needs to be opened from a real web address (e.g. your GitHub Pages link) to load the OCR engine.'
+                            : 'Try a clearer, well-lit photo (or a PDF), or enter the row manually.';
+                        showScanError(hint + '\n\nDetails: ' + reason);
+                    }
+                    blFileInput.value = '';
+                });
+            }
+            if (scanCancelBtn) scanCancelBtn.addEventListener('click', closeOverlay);
+            if (scanErrorCloseBtn) scanErrorCloseBtn.addEventListener('click', closeOverlay);
+            if (scanAddBtn) {
+                scanAddBtn.addEventListener('click', function() {
+                    const data = {
+                        bill: document.getElementById('scanBill').value.trim(),
+                        qty: document.getElementById('scanQty').value.trim(),
+                        cntr: document.getElementById('scanCntr').value.trim(),
+                        agent: document.getElementById('scanAgent').value.trim()
+                    };
+                    const row = createRowElement(data);
+                    tableBody.appendChild(row);
+                    attachRowHandlers(row);
+                    closeOverlay();
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            }
         });
     })();
 </script>
 </body>
-</html> 
+</html>
